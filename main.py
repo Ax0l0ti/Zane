@@ -11,6 +11,8 @@ from core.llm.factory import BaseLLM
 from core.memory import ConversationManager
 from core.routing import IntentDetector
 from core.skills import SkillRegistry, SkillExecutor
+from core.architect import SkillGenerator
+from skills.core_ops.git_tools import GitTools
 
 # Load environment variables
 load_dotenv()
@@ -47,6 +49,13 @@ skill_executor = SkillExecutor(skill_registry)
 # Intent detector (initialized lazily after LLM)
 intent_detector: Optional[IntentDetector] = None
 
+# Skill generator (initialized lazily after LLM)
+skill_generator: Optional[SkillGenerator] = None
+
+# Git tools for safe code modification
+ARCHITECT_PROMPT_PATH = PROMPTS_DIR / "architect.md"
+git_tools = GitTools(Path(__file__).parent)
+
 
 def get_llm() -> BaseLLM:
     """Get or initialize the LLM provider."""
@@ -62,6 +71,18 @@ def get_detector() -> IntentDetector:
     if intent_detector is None:
         intent_detector = IntentDetector(get_llm())
     return intent_detector
+
+
+def get_generator() -> SkillGenerator:
+    """Get or initialize the skill generator."""
+    global skill_generator
+    if skill_generator is None:
+        skill_generator = SkillGenerator(
+            llm=get_llm(),
+            skills_path=SKILLS_DIR,
+            architect_prompt_path=ARCHITECT_PROMPT_PATH
+        )
+    return skill_generator
 
 
 # Pydantic models
@@ -186,11 +207,78 @@ def chat(request: ChatRequest) -> ZaneResponse:
                 # Fall back to chat mode
                 response_text = f"I attempted to use the {intent.skill_name} skill, but it failed: {result.get('error', 'Unknown error')}. Let me try to help directly."
 
-        else:
-            # CHAT or DEV mode - use LLM directly
+        elif intent.mode == "DEV":
+            # DEV mode - generate a new skill with safety
             logs.append(LogEvent(
                 type="thought",
-                message=f"Processing as {intent.mode} mode."
+                message="Entering DEV mode: Skill generation with Git safety."
+            ))
+
+            # Step 1: Git snapshot
+            snapshot_sha = git_tools.snapshot(f"Before generating skill: {request.message[:50]}")
+            logs.append(LogEvent(
+                type="tool",
+                message=f"Git snapshot created: {snapshot_sha[:8]}"
+            ))
+
+            # Step 2: Generate skill
+            generator = get_generator()
+            generated = generator.generate(request.message)
+
+            if not generated["success"]:
+                logs.append(LogEvent(
+                    type="error",
+                    message=f"Skill generation failed: {generated.get('error')}"
+                ))
+                response_text = f"I attempted to create a skill but failed: {generated.get('error')}"
+            else:
+                logs.append(LogEvent(
+                    type="tool",
+                    message=f"Skill generated: {generated['skill_id']}"
+                ))
+
+                # Step 3: Save to disk
+                saved = generator.save_skill(generated)
+                if not saved["success"]:
+                    git_tools.rollback()
+                    logs.append(LogEvent(
+                        type="error",
+                        message=f"Failed to save skill, rolled back: {saved.get('error')}"
+                    ))
+                    response_text = f"Failed to save the skill: {saved.get('error')}. Changes rolled back."
+                else:
+                    logs.append(LogEvent(
+                        type="file_io",
+                        message=f"Skill saved to: {saved['path']}"
+                    ))
+
+                    # Step 4: Validate
+                    validation = generator.validate_skill(Path(saved["path"]))
+                    if not validation["valid"]:
+                        git_tools.rollback()
+                        logs.append(LogEvent(
+                            type="error",
+                            message=f"Skill validation failed, rolled back: {validation['errors']}"
+                        ))
+                        response_text = f"The generated skill had errors: {validation['errors']}. Changes rolled back."
+                    else:
+                        # Step 5: Commit on success
+                        commit_sha = git_tools.commit(f"Created skill: {generated['skill_id']}")
+                        logs.append(LogEvent(
+                            type="tool",
+                            message=f"Skill committed: {commit_sha[:8]}"
+                        ))
+
+                        # Reload skill registry
+                        skill_registry.reload()
+
+                        response_text = f"Successfully created skill '{generated['skill_id']}' at {saved['path']}. The skill is now available for use."
+
+        else:
+            # CHAT mode - use LLM directly
+            logs.append(LogEvent(
+                type="thought",
+                message="Processing as CHAT mode."
             ))
 
             # Load system prompt

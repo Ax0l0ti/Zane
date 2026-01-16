@@ -1,0 +1,11 @@
+{
+  "id": "thread_20260116_161829_c79c4581",
+  "created_at": "2026-01-16T16:18:29.796407",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Build a skill that tracks my gym workouts. It should let me log exercises with sets, reps, and weight, and query my personal records.",
+      "timestamp": "2026-01-16T16:18:29.800119"
+    }
+  ]
+}
