@@ -183,7 +183,7 @@ def chat(request: ChatRequest) -> ZaneResponse:
                 message=f"Executing skill: {intent.skill_name}"
             ))
 
-            result = skill_executor.execute(intent.skill_name)
+            result = skill_executor.execute(intent.skill_name, user_message=request.message)
 
             if result["success"]:
                 logs.append(LogEvent(

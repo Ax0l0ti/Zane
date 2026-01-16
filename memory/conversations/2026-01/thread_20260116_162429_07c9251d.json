@@ -1,0 +1,16 @@
+{
+  "id": "thread_20260116_162429_07c9251d",
+  "created_at": "2026-01-16T16:24:29.168057",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Log workout: bench press, 3 sets, 10 reps, 135 pounds",
+      "timestamp": "2026-01-16T16:24:29.170248"
+    },
+    {
+      "role": "assistant",
+      "content": "Your workout has been logged successfully. \n\n- Exercise: Bench Press\n- Sets: 3\n- Reps: 10\n- Weight: 135 pounds",
+      "timestamp": "2026-01-16T16:24:34.853746"
+    }
+  ]
+}
