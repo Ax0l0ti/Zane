@@ -1,0 +1,13 @@
+{
+  "id": "workout_tracker_v1",
+  "name": "Workout Tracker",
+  "description": "Log gym workouts and query personal records.",
+  "triggers": [
+    "log workout",
+    "track exercise",
+    "personal record"
+  ],
+  "entry_point": "workout_tracker.py",
+  "class_name": "WorkoutTracker",
+  "enabled": true
+}
