@@ -1,0 +1,9 @@
+{
+  "id": "time_ops",
+  "name": "Time Operations",
+  "description": "Get current time, date, and timezone information.",
+  "triggers": ["what time", "current time", "what's the time", "today's date", "what date"],
+  "entry_point": "time_skill.py",
+  "class_name": "TimeSkill",
+  "enabled": true
+}

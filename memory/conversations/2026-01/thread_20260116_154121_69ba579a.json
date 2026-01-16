@@ -1,0 +1,16 @@
+{
+  "id": "thread_20260116_154121_69ba579a",
+  "created_at": "2026-01-16T15:41:21.191406",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Explain the concept of recursion in programming.",
+      "timestamp": "2026-01-16T15:41:21.194574"
+    },
+    {
+      "role": "assistant",
+      "content": "Recursion in programming is a method where a function calls itself to solve a problem. It is used to break down complex problems into simpler, more manageable sub-problems. Here are the key components:\n\n1. **Base Case**: A condition under which the function stops calling itself. It prevents infinite recursion by providing a straightforward answer for specific inputs.\n\n2. **Recursive Case**: The portion of the function where the recursive call occurs, usually with a modified argument that progresses toward the base case.\n\n### Example\nA classic example of recursion is computing the factorial of a number \\( n \\):\n\n- **Base Case**: If \\( n = 0 \\), return 1.\n- **Recursive Case**: Return \\( n \\times \\text{factorial}(n - 1) \\).\n\n### Advantages\n- Simplifies code for problems that can be defined in terms of smaller subproblems (e.g., tree traversal, Fibonacci sequence).\n\n### Disadvantages\n- Risk of stack overflow for deep recursion due to too many function calls.\n- Potential inefficiency compared to iterative solutions in some cases.\n\nIn summary, recursion is a powerful tool in programming that leverages self-referential function calls to address problems by decomposing them into simpler forms.",
+      "timestamp": "2026-01-16T15:41:30.336471"
+    }
+  ]
+}
