@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from core.llm import OpenAIProvider
 from core.llm.factory import BaseLLM
 from core.memory import ConversationManager
+from core.memory.knowledge import KnowledgeManager
 from core.routing import IntentDetector
 from core.skills import SkillRegistry, SkillExecutor
 from core.architect import SkillGenerator
@@ -23,7 +24,7 @@ load_dotenv()
 # Initialize FastAPI app
 app = FastAPI(
     title="Zane",
-    description="A stoic, factual AI assistant - your Exocortex",
+    description="A calm, helpful AI assistant - your Exocortex",
     version="0.1.0"
 )
 
@@ -67,6 +68,9 @@ intent_detector: Optional[IntentDetector] = None
 # Skill generator (initialized lazily after LLM)
 skill_generator: Optional[SkillGenerator] = None
 
+# Knowledge manager (initialized lazily after LLM)
+knowledge_manager: Optional[KnowledgeManager] = None
+
 # Git tools for safe code modification
 ARCHITECT_PROMPT_PATH = PROMPTS_DIR / "architect.md"
 git_tools = GitTools(Path(__file__).parent)
@@ -98,6 +102,17 @@ def get_generator() -> SkillGenerator:
             architect_prompt_path=ARCHITECT_PROMPT_PATH
         )
     return skill_generator
+
+
+def get_knowledge_manager() -> KnowledgeManager:
+    """Get or initialize the knowledge manager."""
+    global knowledge_manager
+    if knowledge_manager is None:
+        knowledge_manager = KnowledgeManager(
+            llm=get_llm(),
+            storage_dir=Path(__file__).parent / "memory" / "knowledge"
+        )
+    return knowledge_manager
 
 
 # Pydantic models
@@ -174,6 +189,16 @@ def chat(request: ChatRequest) -> ZaneResponse:
         # Get providers
         provider = get_llm()
         detector = get_detector()
+
+        # Implicit knowledge extraction - runs on every message
+        km = get_knowledge_manager()
+        extracted_facts = km.extract_and_store(request.message)
+        if extracted_facts:
+            logs.append(LogEvent(
+                type="file_io",
+                message=f"Learned {len(extracted_facts)} new fact(s)",
+                metadata={"facts": extracted_facts}
+            ))
 
         # Detect intent (Glass Box Router)
         available_skills = skill_registry.list_skills()
@@ -298,6 +323,17 @@ def chat(request: ChatRequest) -> ZaneResponse:
 
             # Load system prompt
             system_prompt = load_system_prompt()
+
+            # Retrieve relevant knowledge to inject into context
+            relevant_facts = km.retrieve_relevant(request.message)
+            if relevant_facts:
+                facts_section = "\n\n## Relevant Knowledge\n" + "\n".join(f"- {f}" for f in relevant_facts)
+                system_prompt = system_prompt + facts_section
+                logs.append(LogEvent(
+                    type="thought",
+                    message=f"Injected {len(relevant_facts)} relevant fact(s) into context",
+                    metadata={"facts": relevant_facts}
+                ))
 
             # Load conversation context from JSON
             messages = conversation_manager.load_context(thread_id)

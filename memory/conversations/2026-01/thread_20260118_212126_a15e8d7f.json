@@ -1,0 +1,21 @@
+{
+  "id": "thread_20260118_212126_a15e8d7f",
+  "created_at": "2026-01-18T21:21:26.679304",
+  "messages": [
+    {
+      "role": "user",
+      "content": "I have 2 brothers, Isaac and Reuben.",
+      "timestamp": "2026-01-18T21:21:26.687378"
+    },
+    {
+      "role": "assistant",
+      "content": "It's nice to know about your brothers, Isaac and Reuben. If there's anything specific you'd like to share about them or discuss, feel free to let me know! \ud83d\ude0a",
+      "timestamp": "2026-01-18T21:21:34.854712"
+    },
+    {
+      "role": "user",
+      "content": "Please add them both to your knowledge base as an md each",
+      "timestamp": "2026-01-18T21:22:15.787338"
+    }
+  ]
+}
