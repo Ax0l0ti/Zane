@@ -9,7 +9,7 @@
 
 ## 1. Project Context (The "Why")
 We are building a local, voice-enabled AI assistant that runs on a Raspberry Pi/Laptop via Tailscale.
-* **Core Identity:** Zane is stoic, factual, and transparent. He shows his work ("Thought Process").
+* **Core Identity:** Zane is helpful, factual, and transparent. He shows his work ("Thought Process").
 * **Key Mechanic:** **Dual-Write Memory.** We write `thread.json` for machine context and `thread.md` for human readability. Never parse Markdown to load context.
 * **Key Mechanic:** **Meta-Capabilities.** Zane can write his own Python skills. This process is safeguarded by Git Snapshots (Auto-rollback on failure).
 
@@ -28,7 +28,7 @@ You must create exactly this structure.
 ├── config/
 │   ├── settings.yaml          # Static config (paths, model names)
 │   └── prompts/
-│       ├── system_core.md     # The "Stoic" Persona
+│       ├── system_core.md     # The Persona
 │       └── architect.md       # Instructions for writing code
 │
 ├── core/                      # THE BRAIN (Stateless Logic)
@@ -126,14 +126,14 @@ class ZaneResponse(BaseModel):
 Execute these phases in order. Do not skip verification steps.
 
 Phase 1: The Skeleton & Persona
-Goal: A running server that accepts text and replies as "Zane" (Stoic).
+Goal: A running server that accepts text and replies as "Zane".
 Setup: Create the file tree. Initialize main.py with FastAPI.
 LLM Factory: Implement core/llm/factory.py (Abstract Base Class) and providers.py (Claude 3.5 Sonnet adapter).
 Persona: Create config/prompts/system_core.md.
 Constraint: Must prioritize facts over empathy.
 Endpoint: Create POST /chat.
 Logic: Receive text -> Call LLM -> Return ZaneResponse.
-Verify: curl the endpoint. Ensure the response is stoic.
+Verify: curl the endpoint. 
 
 Phase 2: Dual-Write Memory
 Goal: Persistence. Survives server restart.

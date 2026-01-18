@@ -3,7 +3,10 @@ from pathlib import Path
 from typing import Literal, Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from core.llm import OpenAIProvider
@@ -22,6 +25,18 @@ app = FastAPI(
     title="Zane",
     description="A stoic, factual AI assistant - your Exocortex",
     version="0.1.0"
+)
+
+# CORS middleware for development (Vite dev server on port 5173)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Load system prompt
@@ -329,6 +344,30 @@ def chat(request: ChatRequest) -> ZaneResponse:
             message=f"LLM call failed: {str(e)}"
         ))
         raise HTTPException(status_code=500, detail=f"LLM error: {str(e)}")
+
+
+# Static file serving for production (built PWA)
+UI_DIST_DIR = Path(__file__).parent / "ui" / "dist"
+
+if UI_DIST_DIR.exists():
+    # Mount static assets (JS, CSS, icons)
+    app.mount("/assets", StaticFiles(directory=UI_DIST_DIR / "assets"), name="assets")
+    app.mount("/icons", StaticFiles(directory=UI_DIST_DIR / "icons"), name="icons")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(request: Request, full_path: str):
+        """Serve the SPA for any non-API route (catch-all for client-side routing)."""
+        # Don't catch API routes
+        if full_path.startswith("chat") or full_path.startswith("api"):
+            raise HTTPException(status_code=404, detail="Not found")
+
+        # Try to serve the exact file if it exists
+        file_path = UI_DIST_DIR / full_path
+        if file_path.is_file():
+            return FileResponse(file_path)
+
+        # Otherwise serve index.html for SPA routing
+        return FileResponse(UI_DIST_DIR / "index.html")
 
 
 if __name__ == "__main__":
