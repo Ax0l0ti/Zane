@@ -1,0 +1,13 @@
+{
+  "id": "knowledge_base_updater_v1",
+  "name": "Knowledge Base Updater",
+  "description": "Adds user-defined entries to the knowledge base in Markdown format.",
+  "triggers": [
+    "add to knowledge base",
+    "update knowledge base",
+    "save info"
+  ],
+  "entry_point": "knowledge_base_updater.py",
+  "class_name": "KnowledgeBaseUpdater",
+  "enabled": true
+}
