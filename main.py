@@ -11,8 +11,7 @@ from pydantic import BaseModel
 
 from core.llm import OpenAIProvider
 from core.llm.factory import BaseLLM
-from core.memory import ConversationManager
-from core.memory.knowledge import KnowledgeManager
+from core.memory import ConversationManager, KnowledgeManager, KnowledgeExtractor
 from core.routing import IntentDetector
 from core.skills import SkillRegistry, SkillExecutor
 from core.architect import SkillGenerator
@@ -57,6 +56,13 @@ llm: Optional[BaseLLM] = None
 CONVERSATIONS_DIR = Path(__file__).parent / "memory" / "conversations"
 conversation_manager = ConversationManager(CONVERSATIONS_DIR)
 
+# Initialize knowledge manager
+KNOWLEDGE_DIR = Path(__file__).parent / "memory" / "knowledge"
+knowledge_manager = KnowledgeManager(KNOWLEDGE_DIR)
+
+# Knowledge extractor (initialized lazily after LLM)
+knowledge_extractor: Optional[KnowledgeExtractor] = None
+
 # Initialize skills
 SKILLS_DIR = Path(__file__).parent / "skills"
 skill_registry = SkillRegistry(SKILLS_DIR)
@@ -67,9 +73,6 @@ intent_detector: Optional[IntentDetector] = None
 
 # Skill generator (initialized lazily after LLM)
 skill_generator: Optional[SkillGenerator] = None
-
-# Knowledge manager (initialized lazily after LLM)
-knowledge_manager: Optional[KnowledgeManager] = None
 
 # Git tools for safe code modification
 ARCHITECT_PROMPT_PATH = PROMPTS_DIR / "architect.md"
@@ -104,15 +107,12 @@ def get_generator() -> SkillGenerator:
     return skill_generator
 
 
-def get_knowledge_manager() -> KnowledgeManager:
-    """Get or initialize the knowledge manager."""
-    global knowledge_manager
-    if knowledge_manager is None:
-        knowledge_manager = KnowledgeManager(
-            llm=get_llm(),
-            storage_dir=Path(__file__).parent / "memory" / "knowledge"
-        )
-    return knowledge_manager
+def get_extractor() -> KnowledgeExtractor:
+    """Get or initialize the knowledge extractor."""
+    global knowledge_extractor
+    if knowledge_extractor is None:
+        knowledge_extractor = KnowledgeExtractor(get_llm())
+    return knowledge_extractor
 
 
 # Pydantic models
@@ -186,19 +186,20 @@ def chat(request: ChatRequest) -> ZaneResponse:
             message="Saved user message to thread (JSON + MD)"
         ))
 
+        # Retrieve relevant knowledge
+        relevant_knowledge = knowledge_manager.retrieve_relevant(request.message)
+        knowledge_context = ""
+        if relevant_knowledge:
+            knowledge_context = knowledge_manager.format_for_context(relevant_knowledge)
+            logs.append(LogEvent(
+                type="thought",
+                message=f"Retrieved {len(relevant_knowledge)} relevant knowledge entries",
+                metadata={"entries": [e.get("file_path") for e in relevant_knowledge]}
+            ))
+
         # Get providers
         provider = get_llm()
         detector = get_detector()
-
-        # Implicit knowledge extraction - runs on every message
-        km = get_knowledge_manager()
-        extracted_facts = km.extract_and_store(request.message)
-        if extracted_facts:
-            logs.append(LogEvent(
-                type="file_io",
-                message=f"Learned {len(extracted_facts)} new fact(s)",
-                metadata={"facts": extracted_facts}
-            ))
 
         # Detect intent (Glass Box Router)
         available_skills = skill_registry.list_skills()
@@ -324,16 +325,9 @@ def chat(request: ChatRequest) -> ZaneResponse:
             # Load system prompt
             system_prompt = load_system_prompt()
 
-            # Retrieve relevant knowledge to inject into context
-            relevant_facts = km.retrieve_relevant(request.message)
-            if relevant_facts:
-                facts_section = "\n\n## Relevant Knowledge\n" + "\n".join(f"- {f}" for f in relevant_facts)
-                system_prompt = system_prompt + facts_section
-                logs.append(LogEvent(
-                    type="thought",
-                    message=f"Injected {len(relevant_facts)} relevant fact(s) into context",
-                    metadata={"facts": relevant_facts}
-                ))
+            # Inject relevant knowledge into system prompt
+            if knowledge_context:
+                system_prompt += f"\n\n## Relevant Knowledge\n{knowledge_context}"
 
             # Load conversation context from JSON
             messages = conversation_manager.load_context(thread_id)
@@ -355,6 +349,41 @@ def chat(request: ChatRequest) -> ZaneResponse:
             type="file_io",
             message="Saved assistant response to thread (JSON + MD)"
         ))
+
+        # Extract and persist knowledge from conversation
+        try:
+            extractor = get_extractor()
+            extraction = extractor.extract_updates(
+                user_message=request.message,
+                assistant_response=response_text,
+                knowledge_context=knowledge_context
+            )
+
+            if extraction["updates"]:
+                logs.append(LogEvent(
+                    type="thought",
+                    message=f"Extracting knowledge: {extraction['reasoning']}"
+                ))
+
+                for update in extraction["updates"]:
+                    # Use structured fields if available, otherwise fall back to content
+                    result = knowledge_manager.find_or_create_entry(
+                        template_type=update["template_type"],
+                        identifier=update["identifier"],
+                        content=update.get("content"),
+                        tags=update.get("tags", []),
+                        fields=update.get("fields")
+                    )
+                    logs.append(LogEvent(
+                        type="file_io",
+                        message=f"Knowledge {result.get('action', 'processed')}: {result.get('file_path', 'unknown')}",
+                        metadata=result
+                    ))
+        except Exception as e:
+            logs.append(LogEvent(
+                type="error",
+                message=f"Knowledge extraction failed: {str(e)}"
+            ))
 
         logs.append(LogEvent(
             type="thought",

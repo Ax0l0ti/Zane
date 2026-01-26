@@ -1,0 +1,14 @@
+I want chats information to be used to influence and modify the knowledge base, this knowledge base can then be retrieved later to inform new chats. To do so we need a way of storing knowledge. 
+
+I want this to be a core functionality, if a chat wants context, they can retrieve from knowledge base to inform themselves. After a response, a function can be called to update the knowledge base. All knowledge is stored in md files within the knowledge base folder, unless specific skill related.  
+
+Firstly, lets design the memory structure and some basic templates. I think most .md files should be templated so searching is easier
+Lets design templates for knowledge first. Firstly every file should have a list of tags and/or metadata at the top of the file e.i template type, related .md files.
+
+I think a template for people should have their name, a description/relation section, a related todo section and a birthday note.
+
+A template folder could be used to store the structures so they can be kept consistent when creating new md files. Whilst a markdown might be bespoke, if it fits a template it could be easily used or adapted. 
+ 
+A todo md should be made that contains a list of todos. These could contain a description, a hard or loose deadline and if anything is required to complete it. 
+
+Lets create the templates then we can design the retrieve and update for knowledge. 

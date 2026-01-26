@@ -130,7 +130,7 @@ Goal: A running server that accepts text and replies as "Zane".
 Setup: Create the file tree. Initialize main.py with FastAPI.
 LLM Factory: Implement core/llm/factory.py (Abstract Base Class) and providers.py (Claude 3.5 Sonnet adapter).
 Persona: Create config/prompts/system_core.md.
-Constraint: Must prioritize facts over empathy.
+Constraint: Must prioritize honestly over empathy.
 Endpoint: Create POST /chat.
 Logic: Receive text -> Call LLM -> Return ZaneResponse.
 Verify: curl the endpoint. 
