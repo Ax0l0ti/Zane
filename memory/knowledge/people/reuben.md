@@ -2,6 +2,7 @@
 created: '2026-01-26'
 related_files: []
 tags:
+- person
 - family
 - brother
 template: person

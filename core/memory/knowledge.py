@@ -340,6 +340,34 @@ class KnowledgeManager:
         results = []
         seen_paths = set()
 
+        # 0. Tag-based category listing — detect "list/show/all" + tag name
+        msg_lower = user_message.lower()
+        list_triggers = ["list", "show", "all", "every", "who do i", "what do i"]
+        # Plural aliases for template types so "people" matches "person", etc.
+        PLURAL_ALIASES = {"people": "person", "persons": "person", "todos": "todo", "notes": "note"}
+
+        if any(trigger in msg_lower for trigger in list_triggers):
+            all_tags = set()
+            for tmpl_type in self.TEMPLATE_DIRS:
+                for entry in self.list_by_template(tmpl_type):
+                    all_tags.update(t.lower() for t in entry.get("tags", []))
+
+            matched_tags = set()
+            for tag in all_tags:
+                if tag in msg_lower:
+                    matched_tags.add(tag)
+
+            # Check plural aliases
+            for plural, singular in PLURAL_ALIASES.items():
+                if plural in msg_lower and singular in all_tags:
+                    matched_tags.add(singular)
+
+            for tag in matched_tags:
+                for entry in self.search_by_tags([tag]):
+                    if entry["file_path"] not in seen_paths:
+                        results.append(entry)
+                        seen_paths.add(entry["file_path"])
+
         # 1. Extract potential names (capitalized words, 2+ chars)
         name_pattern = r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b'
         names = re.findall(name_pattern, user_message)
@@ -440,7 +468,10 @@ class KnowledgeManager:
 
         frontmatter["created"] = now
         frontmatter["updated"] = now
-        frontmatter["tags"] = tags or []
+        entry_tags = list(tags or [])
+        if template_type not in entry_tags:
+            entry_tags.insert(0, template_type)
+        frontmatter["tags"] = entry_tags
         frontmatter["related_files"] = related_files or []
 
         # Replace placeholder in body

@@ -1,0 +1,26 @@
+{
+  "id": "thread_20260127_115511_3fa96ecf",
+  "created_at": "2026-01-27T11:55:11.120411",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Please give me a list of people i have in knowledge",
+      "timestamp": "2026-01-27T11:55:11.125184"
+    },
+    {
+      "role": "assistant",
+      "content": "It seems like you're asking for a list of individuals you're familiar with or perhaps notable figures in some context. However, I'm not privy to your personal knowledge or contacts. If you could clarify what you mean by \"people I have in knowledge\"\u2014for example, specific categories of people (e.g., historical figures, scientists, artists, etc.)\u2014I'd be happy to help compile a list based on that context!",
+      "timestamp": "2026-01-27T11:55:16.858903"
+    },
+    {
+      "role": "user",
+      "content": "Please list all people in my knowledge base",
+      "timestamp": "2026-01-27T12:59:37.864098"
+    },
+    {
+      "role": "assistant",
+      "content": "It appears that I don\u2019t currently have any entries in your knowledge base related to specific people. If you have particular individuals or categories of people in mind that you'd like me to add or look for, please let me know!",
+      "timestamp": "2026-01-27T12:59:43.680947"
+    }
+  ]
+}

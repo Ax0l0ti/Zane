@@ -32,7 +32,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: /^http:\/\/localhost:8000\/chat/,
+            urlPattern: ({url}: {url: URL}) => url.pathname === '/chat',
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
@@ -47,6 +47,7 @@ export default defineConfig({
     })
   ],
   server: {
+    host: '0.0.0.0',
     port: 5173,
     proxy: {
       '/chat': {

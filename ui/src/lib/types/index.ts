@@ -2,6 +2,7 @@
 
 export interface LogEvent {
   type: 'thought' | 'tool' | 'file_io' | 'error';
+  subtype?: string;
   message: string;
   metadata?: Record<string, unknown>;
 }

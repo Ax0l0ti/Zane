@@ -189,6 +189,7 @@ class ZaneResponse:
 
 class LogEvent:
     type: "thought" | "tool" | "file_io" | "error"
+    subtype: Optional[str]       # e.g. "read", "write", "intent", "skill_exec"
     message: str
     metadata: Optional[dict]
 ```
@@ -223,12 +224,37 @@ skills = registry.list_skills()  # Returns list of manifests
 3. **Safety**: Git snapshot before risky operations
 4. **Simplicity**: File system is the database (no complex DBs in Phase 1-4)
 5. **Dual-Write**: JSON for machines, MD for humans
+6. **Document improvements**: After any non-trivial improvement, write a short log to `meta_logs/improvements/YYYY-MM-DD_<slug>.md` describing the problem, solution, and why it matters
 
 ## Conversation History
 
 Past conversations are stored in `memory/conversations/YYYY-MM/`. To understand previous context:
 - Read `thread_*.json` files for full message history
 - Each thread has timestamps and metadata
+
+## Tailscale Access
+
+Zane is accessible over Tailscale with whois-based authentication.
+
+- **Access URL**: `http://<tailscale-ip>:8000` (backend) or `:5173` (dev frontend)
+- **Auth**: Requests from Tailscale IPs are verified via `tailscale whois`. Localhost is always bypassed (dev mode).
+- **Health check**: `GET /` is exempt from auth (always accessible).
+
+### Env Vars
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `TAILSCALE_AUTH_ENABLED` | `true` | Set to `false` to disable Tailscale auth middleware |
+
+### Key Files
+- `core/auth/tailscale.py` — `TailscaleAuth` class, whois caching, localhost bypass
+- `core/auth/middleware.py` — `TailscaleAuthMiddleware` (FastAPI middleware)
+- `main.py` — Dynamic CORS origins from `tailscale ip -4`, conditional middleware setup
+
+### Auth Flow
+```
+Request → Is localhost? → Yes → bypass (dev mode)
+                        → No  → tailscale whois → authorized? → proceed / 403
+```
 
 ## Current Status
 

@@ -94,6 +94,36 @@ class SkillRegistry:
         """
         return list(self.skills.values())
 
+    def get_skill_files(self, skill_id: str) -> Optional[dict]:
+        """Return manifest + source code for an existing skill.
+
+        Args:
+            skill_id: The skill identifier.
+
+        Returns:
+            Dict with 'manifest', 'code', and 'path', or None if not found.
+        """
+        manifest = self.get_skill(skill_id)
+        if not manifest:
+            return None
+
+        skill_dir = Path(manifest["_path"])
+        entry_point = manifest.get("entry_point", "skill.py")
+        code_path = skill_dir / entry_point
+
+        if not code_path.exists():
+            return None
+
+        try:
+            code = code_path.read_text(encoding="utf-8")
+            return {
+                "manifest": {k: v for k, v in manifest.items() if k != "_path"},
+                "code": code,
+                "path": skill_dir
+            }
+        except Exception:
+            return None
+
     def get_skill_names(self) -> list[str]:
         """Get list of all skill names.
 

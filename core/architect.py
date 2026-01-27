@@ -43,6 +43,70 @@ class SkillGenerator:
             return path.read_text(encoding="utf-8")
         return "You are a Python engineer. Write clean, robust code."
 
+    def plan(self, user_request: str) -> dict:
+        """Generate a plan for a new skill without writing code.
+
+        Args:
+            user_request: What the user wants the skill to do.
+
+        Returns:
+            Dict with 'success', 'plan_text', 'skill_id', and optionally 'error'.
+        """
+        planning_prompt = f"""Based on the user's request, create a PLAN for a new Zane skill.
+Do NOT write any code yet. Instead, describe:
+
+1. **Skill Name & ID**: What the skill will be called
+2. **Purpose**: What it does in 1-2 sentences
+3. **Trigger Words**: What phrases will activate it
+4. **Data Storage**: What files/state it needs to persist
+5. **Key Methods**: The main operations it will support
+6. **Dependencies**: Any external libraries needed
+
+User Request: {user_request}
+
+Format your response as a clear, readable plan the user can approve or suggest changes to.
+"""
+
+        try:
+            response = self.llm.generate(
+                messages=[{"role": "user", "content": planning_prompt}],
+                system_prompt=self.architect_prompt,
+                max_tokens=1024
+            )
+
+            # Extract a skill ID from the plan
+            skill_id = self._extract_skill_id(response, user_request)
+
+            return {
+                "success": True,
+                "plan_text": response,
+                "skill_id": skill_id,
+                "user_request": user_request
+            }
+
+        except Exception as e:
+            return {"success": False, "error": f"Planning failed: {str(e)}"}
+
+    def _extract_skill_id(self, plan_text: str, user_request: str) -> str:
+        """Extract or generate a skill ID from plan text.
+
+        Args:
+            plan_text: The generated plan
+            user_request: Original user request
+
+        Returns:
+            A snake_case skill ID
+        """
+        # Try to find "Skill ID: xxx" in the plan
+        import re as _re
+        match = _re.search(r'(?:Skill\s+ID|ID)[:\s]*[`]*([a-z_0-9]+(?:_v\d+)?)[`]*', plan_text, _re.IGNORECASE)
+        if match:
+            return match.group(1).lower()
+
+        # Fallback: generate from first few words of request
+        words = _re.sub(r'[^\w\s]', '', user_request.lower()).split()[:3]
+        return "_".join(words) + "_v1"
+
     def generate(self, user_request: str) -> dict:
         """Generate a new skill based on user request.
 
@@ -162,6 +226,135 @@ Make the skill focused and practical. Use a descriptive skill ID.
                 "files_created": [str(manifest_path), str(python_path)]
             }
 
+        except Exception as e:
+            return {"success": False, "error": f"Failed to save: {str(e)}"}
+
+    def plan_modification(self, user_request: str, existing_manifest: dict, existing_code: str) -> dict:
+        """Generate a plan to modify an existing skill.
+
+        Args:
+            user_request: What the user wants to change.
+            existing_manifest: The current skill.json manifest.
+            existing_code: The current Python source code.
+
+        Returns:
+            Dict with 'success', 'plan_text', 'skill_id', and optionally 'error'.
+        """
+        planning_prompt = f"""The user wants to MODIFY an existing Zane skill. Do NOT create a new skill.
+
+**Existing Skill Manifest:**
+```json
+{json.dumps(existing_manifest, indent=2)}
+```
+
+**Existing Code:**
+```python
+{existing_code}
+```
+
+**User Request:** {user_request}
+
+Create a MODIFICATION PLAN describing:
+1. **What changes** are needed to the existing code
+2. **Why** each change is necessary
+3. **Updated trigger words** (if any)
+4. **New dependencies** (if any)
+5. **Risks or side effects** to watch for
+
+Do NOT propose a new skill. Describe changes to the existing one.
+"""
+
+        try:
+            response = self.llm.generate(
+                messages=[{"role": "user", "content": planning_prompt}],
+                system_prompt=self.architect_prompt,
+                max_tokens=1024
+            )
+
+            return {
+                "success": True,
+                "plan_text": response,
+                "skill_id": existing_manifest.get("id", "unknown"),
+                "user_request": user_request
+            }
+        except Exception as e:
+            return {"success": False, "error": f"Modification planning failed: {str(e)}"}
+
+    def generate_modification(self, user_request: str, existing_manifest: dict, existing_code: str) -> dict:
+        """Generate modified skill code based on user request and existing code.
+
+        Args:
+            user_request: What the user wants to change.
+            existing_manifest: The current skill.json manifest.
+            existing_code: The current Python source code.
+
+        Returns:
+            Dict with 'success', 'skill_id', 'files', and optionally 'error'.
+        """
+        generation_prompt = f"""Modify an existing Zane skill based on the user's request.
+
+**Existing Skill Manifest:**
+```json
+{json.dumps(existing_manifest, indent=2)}
+```
+
+**Existing Code:**
+```python
+{existing_code}
+```
+
+**User Request:** {user_request}
+
+Output the MODIFIED versions:
+1. The updated skill.json manifest (in a ```json code block) — keep the same id
+2. The updated Python implementation (in a ```python code block)
+
+Only change what's necessary. Preserve existing functionality unless the user asks to remove it.
+"""
+
+        try:
+            response = self.llm.generate(
+                messages=[{"role": "user", "content": generation_prompt}],
+                system_prompt=self.architect_prompt,
+                max_tokens=2048
+            )
+
+            return self._parse_generated_code(response)
+        except Exception as e:
+            return {"success": False, "error": f"Modification generation failed: {str(e)}"}
+
+    def save_skill_to_path(self, generated: dict, target_dir: Path) -> dict:
+        """Save generated skill files to a specific directory (for in-place updates).
+
+        Args:
+            generated: Result from generate() or generate_modification().
+            target_dir: The existing skill directory to write into.
+
+        Returns:
+            Dict with 'success' and 'path' or 'error'.
+        """
+        if not generated.get("success"):
+            return {"success": False, "error": "Cannot save failed generation"}
+
+        files = generated["files"]
+        manifest = files["skill.json"]
+
+        try:
+            manifest_path = target_dir / "skill.json"
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2),
+                encoding="utf-8"
+            )
+
+            entry_point = manifest.get("entry_point", "skill.py")
+            python_path = target_dir / entry_point
+            python_path.write_text(files["python"], encoding="utf-8")
+
+            return {
+                "success": True,
+                "path": str(target_dir),
+                "files_created": [str(manifest_path), str(python_path)]
+            }
         except Exception as e:
             return {"success": False, "error": f"Failed to save: {str(e)}"}
 

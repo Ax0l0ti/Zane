@@ -11,11 +11,18 @@ ROUTER_PROMPT = """You are an intent classifier for Zane, an AI assistant. Analy
 2. **SKILL** - User wants to use a specific tool/skill (check available skills below)
 3. **DEV** - User wants to create, modify, or build code/skills
 
+For DEV mode, also determine:
+- **action**: "create" if building something new, "modify" if changing an existing skill
+- **target_skill**: the name/id of the skill to modify (null if creating new)
+
+Modify keywords: modify, update, change, edit, fix, tweak, adjust, improve
+Create keywords: build, create, make, add, new, write
+
 Available skills:
 {skills_list}
 
 Respond with ONLY valid JSON in this exact format (no markdown, no explanation):
-{{"mode": "CHAT|SKILL|DEV", "confidence": 0.0-1.0, "skill_name": "name or null", "reasoning": "brief explanation"}}
+{{"mode": "CHAT|SKILL|DEV", "confidence": 0.0-1.0, "skill_name": "name or null", "action": "create|modify|null", "target_skill": "skill name or null", "reasoning": "brief explanation"}}
 
 User message: {message}"""
 
@@ -95,7 +102,9 @@ class IntentDetector:
                 mode=data.get("mode", "CHAT").upper(),
                 confidence=float(data.get("confidence", 0.5)),
                 skill_name=data.get("skill_name"),
-                reasoning=data.get("reasoning")
+                reasoning=data.get("reasoning"),
+                dev_action=data.get("action"),
+                target_skill=data.get("target_skill")
             )
         except (json.JSONDecodeError, KeyError, ValueError):
             # Default to CHAT on any parsing error

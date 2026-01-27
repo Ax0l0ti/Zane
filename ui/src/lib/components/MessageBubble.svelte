@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Message } from '../types';
   import { parseMarkdown } from '../utils/markdown';
+  import LogCallouts from './LogCallouts.svelte';
 
   export let message: Message;
 
@@ -13,6 +14,9 @@
 </script>
 
 <div class="message" class:user={isUser} class:assistant={!isUser}>
+  {#if !isUser && message.logs?.length}
+    <LogCallouts logs={message.logs} />
+  {/if}
   <div class="bubble">
     {#if isUser}
       <p class="content">{message.content}</p>

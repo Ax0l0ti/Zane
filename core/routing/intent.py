@@ -30,3 +30,11 @@ class Intent(BaseModel):
         None,
         description="Brief explanation of why this intent was detected"
     )
+    dev_action: Optional[str] = Field(
+        None,
+        description="For DEV mode: 'create' or 'modify'"
+    )
+    target_skill: Optional[str] = Field(
+        None,
+        description="For DEV modify: name/id of the skill to modify"
+    )
