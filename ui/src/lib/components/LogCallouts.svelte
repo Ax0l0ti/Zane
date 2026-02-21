@@ -2,6 +2,7 @@
   import type { LogEvent } from '../types';
 
   export let logs: LogEvent[];
+  export let reasoning: string = '';
 
   let expanded = false;
 
@@ -40,6 +41,10 @@
     if (log.subtype === 'approval') return 'Approval';
     if (log.subtype === 'snapshot') return 'Git snapshot';
     if (log.subtype === 'commit') return 'Git commit';
+    if (log.subtype === 'tool_call') return 'Tool call';
+    if (log.subtype === 'tool_result') return 'Tool result';
+    if (log.subtype === 'tools') return 'Preparing tools';
+    if (log.subtype === 'tool_loop') return 'Tool loop';
     if (log.subtype === 'write') return 'Writing file';
     if (log.subtype === 'read') return 'Reading file';
     if (log.type === 'error') return 'Error';
@@ -55,9 +60,14 @@
   <div class="thinking-block" class:has-errors={hasErrors}>
     <button class="thinking-header" on:click={() => expanded = !expanded}>
       <span class="thinking-icon">💭</span>
-      <span class="thinking-label">Thinking</span>
+      <span class="thinking-label">{reasoning ? 'Reasoning' : 'Thinking'}</span>
       <span class="thinking-summary">
-        {stepCount} step{stepCount !== 1 ? 's' : ''}
+        {#if reasoning}
+          {reasoning}
+          <span class="step-count">({stepCount} steps)</span>
+        {:else}
+          {stepCount} step{stepCount !== 1 ? 's' : ''}
+        {/if}
         {#if hasErrors}
           <span class="error-badge">⚠</span>
         {/if}
@@ -134,6 +144,15 @@
     display: flex;
     align-items: center;
     gap: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .step-count {
+    font-size: 0.72rem;
+    opacity: 0.6;
+    flex-shrink: 0;
   }
 
   .error-badge {

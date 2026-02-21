@@ -16,20 +16,14 @@ server = "python main.py"
 build-ui = { cmd = "npm run build", cwd = "ui" }
 
 [dependencies]
-python = ">=3.11"
-nodejs = ">=18.0.0"
-fastapi = ">=0.109.0"
-uvicorn = ">=0.27.0"
-pydantic = ">=2.5.0"
-python-dotenv = ">=1.0.0"
-gitpython = ">=3.1.0"
-
-# LLM providers
-anthropic = ">=0.18.0"
-openai = ">=1.0.0"
-
-# Knowledge base
-pyyaml = ">=6.0"
-
-# Vector store (Phase 5)
-chromadb = ">=0.4.0"
+python = ">=3.13.11,<3.15"
+nodejs = ">=25.2.1,<25.3"
+fastapi = ">=0.128.0,<0.129"
+uvicorn = ">=0.40.0,<0.41"
+pydantic = ">=2.12.5,<3"
+python-dotenv = ">=1.2.1,<2"
+gitpython = ">=3.1.46,<4"
+anthropic = ">=0.76.0,<0.77"
+openai = ">=2.15.0,<3"
+pyyaml = ">=6.0.3,<7"
+chromadb = ">=0.3.23,<0.7"

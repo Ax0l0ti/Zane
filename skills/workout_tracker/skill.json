@@ -1,7 +1,7 @@
 {
   "id": "workout_tracker_v1",
   "name": "Workout Tracker",
-  "description": "Log gym workouts, query personal records, and retrieve logged workout data grouped by date.",
+  "description": "Log gym workouts, query personal records, and retrieve logged workout data grouped by date (assume today if none given).",
   "triggers": [
     "log workout",
     "track exercise",

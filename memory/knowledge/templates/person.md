@@ -12,12 +12,8 @@ updated:
 <!-- How do you know this person? What's their role in your life? -->
 
 
-## Description
-<!-- Key details: personality, interests, profession, etc. -->
-
-
 ## Birthday
-<!-- Format: YYYY-MM-DD or "Unknown" -->
+<!-- Format: MM-DD or YYYY-MM-DD -->
 
 
 ## Related Todos
@@ -25,5 +21,5 @@ updated:
 -
 
 ## Notes
-<!-- Freeform notes, memories, things to remember -->
+<!-- Key details, personality, interests, memories, things to remember -->
 

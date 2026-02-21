@@ -1,20 +1,18 @@
 ---
 created: '2026-01-26'
-related_files: []
+related_files: 
+- people\reuben.md
 tags:
-- person
 - family
+- person
 - brother
 template: person
-updated: '2026-01-26'
+updated: '2026-02-02'
 ---
 # Isaac
 
 ## Relation
 Middle brother
-
-## Description
-<!-- Key details: personality, interests, profession, etc. -->
 
 
 ## Birthday
@@ -26,5 +24,5 @@ Middle brother
 -
 
 ## Notes
-{'relation': 'middle brother', 'date_of_birth': '2007-05-04'}
+<!-- Key details, personality, interests, memories, things to remember -->
 

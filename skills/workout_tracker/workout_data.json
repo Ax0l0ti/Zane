@@ -1,1 +1,24 @@
-{"workouts": [{"exercise": "bench press", "sets": 3, "reps": 10, "weight": 135.0}]}
+{
+ "workouts": [
+  {
+   "exercise": "bench press",
+   "sets": 3,
+   "reps": 10,
+   "weight": 135.0
+  },
+  {
+   "date": "2026-01-27",
+   "exercise": "bench press",
+   "sets": 3,
+   "reps": 12,
+   "weight": 60.0
+  },
+  {
+   "date": "2026-01-30",
+   "exercise": "unknown exercise",
+   "sets": 1,
+   "reps": 1,
+   "weight": 0
+  }
+ ]
+}

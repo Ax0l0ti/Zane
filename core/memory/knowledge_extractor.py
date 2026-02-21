@@ -21,6 +21,7 @@ EXTRACTION_PROMPT = """You are a knowledge extraction assistant. Analyze the con
    - People: Names, relationships, details about specific individuals the user knows
    - Todos: Tasks, deadlines, commitments, reminders the user mentions
    - Notes: Facts, preferences, project info, technical knowledge
+5. For related_files: use format "people/name.md", "todos/slug.md", or "notes/slug.md". Only include when the user explicitly mentions a relationship between entries. Convert names to lowercase slugs.
 
 ## Context
 The user's knowledge base currently contains:
@@ -43,7 +44,8 @@ For PERSON entries, use these fields:
             "fields": {{
                 "relation": "how the user knows them (friend, brother, coworker, etc.)",
                 "description": "key details about them (personality, interests, profession)",
-                "birthday": "YYYY-MM-DD format or null if unknown",
+                "birthday": "MM-DD or YYYY-MM-DD format, or null if unknown",
+                "related_files": ["people/other_person.md"],
                 "notes": "any other information"
             }},
             "tags": ["relevant", "tags"]
@@ -133,7 +135,7 @@ class KnowledgeExtractor:
         # Skip obvious non-factual patterns
         skip_patterns = [
             r'^(hi|hello|hey|thanks|thank you|ok|okay|sure|yes|no|bye|goodbye)\b',
-            r'^(what|how|when|where|why|who|can you|could you|would you|will you)\b',
+            r'^(what|how|when|where|why|who)\b',
             r'^\?',  # Starts with question mark
         ]
 

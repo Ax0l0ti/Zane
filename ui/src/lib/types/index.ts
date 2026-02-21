@@ -10,6 +10,7 @@ export interface LogEvent {
 export interface ZaneResponse {
   text: string;
   thread_id: string;
+  reasoning?: string;
   audio_base64?: string | null;
   logs: LogEvent[];
 }
@@ -19,12 +20,43 @@ export interface ChatRequest {
   thread_id?: string;
 }
 
+export interface RollbackResponse {
+  success: boolean;
+  message: string;
+  rolled_back_commit?: string;
+  reset_to?: string;
+}
+
+export interface ThreadMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
+export interface ThreadResponse {
+  id: string;
+  created_at: string;
+  messages: ThreadMessage[];
+}
+
+export interface ThreadSummary {
+  id: string;
+  created_at: string;
+  message_count: number;
+  preview: string;
+}
+
+export interface ThreadListResponse {
+  threads: ThreadSummary[];
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
   logs?: LogEvent[];
+  reasoning?: string;
 }
 
 export interface ThemeConfig {
@@ -34,9 +66,9 @@ export interface ThemeConfig {
 export type AccentColor = 'blue' | 'cyan' | 'green' | 'purple' | 'orange';
 
 export const ACCENT_COLORS: Record<AccentColor, string> = {
-  blue: '#3b82f6',
-  cyan: '#06b6d4',
+  blue: '#3b83f6ee',
+  cyan: '#06b5d4df',
   green: '#22c55e',
-  purple: '#8b5cf6',
-  orange: '#f97316'
+  pink: '#c51ba9',
+  white: '#d6d6d6c0'
 } as const;

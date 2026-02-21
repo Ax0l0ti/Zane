@@ -15,7 +15,7 @@
 
 <div class="message" class:user={isUser} class:assistant={!isUser}>
   {#if !isUser && message.logs?.length}
-    <LogCallouts logs={message.logs} />
+    <LogCallouts logs={message.logs} reasoning={message.reasoning || ''} />
   {/if}
   <div class="bubble">
     {#if isUser}

@@ -135,8 +135,129 @@ class KnowledgeManager:
         slug = re.sub(r'[\s-]+', '_', slug)
         return slug
 
+    # -------------------------------------------------------------------------
+    # Section-Based Content Helpers
+    # -------------------------------------------------------------------------
+
+    # Map field names to their corresponding section headers
+    FIELD_TO_SECTION = {
+        # Person fields
+        "relation": "Relation",
+        "description": "Description",
+        "birthday": "Birthday",
+        "notes": "Notes",
+        # Note fields
+        "summary": "Summary",
+        "details": "Details",
+    }
+
+    def _replace_section_content(self, body: str, section_name: str, content: str) -> str:
+        """Replace content in a markdown section (## Header).
+
+        Finds `## {section_name}` and replaces everything between it and the next
+        `## ` header (or EOF) with the new content. This is robust to changes in
+        HTML comment placeholders.
+
+        Args:
+            body: Full markdown body
+            section_name: Header name without ## (e.g., "Relation")
+            content: New content for the section
+
+        Returns:
+            Body with section content replaced
+        """
+        # Pattern: ## SectionName followed by anything until next ## or end
+        # Uses DOTALL so . matches newlines
+        pattern = rf'(## {re.escape(section_name)}\n).*?(?=\n## |\Z)'
+        replacement = rf'\g<1>{content}\n'
+        new_body, count = re.subn(pattern, replacement, body, count=1, flags=re.DOTALL)
+        return new_body if count > 0 else body
+
+    def _append_to_section(self, body: str, section_name: str, content: str) -> str:
+        """Append content to an existing section, or replace if only comments/whitespace.
+
+        If the section currently has real content, prepends the new content.
+        If the section only has HTML comments or whitespace, replaces entirely.
+
+        Args:
+            body: Full markdown body
+            section_name: Header name without ## (e.g., "Notes")
+            content: Content to append/replace
+
+        Returns:
+            Updated body
+        """
+        # Pattern to capture section header and its content
+        pattern = rf'(## {re.escape(section_name)}\n)(.*?)(?=\n## |\Z)'
+        match = re.search(pattern, body, flags=re.DOTALL)
+
+        if not match:
+            return body
+
+        header = match.group(1)
+        existing = match.group(2)
+
+        # Check if existing content is only comments/whitespace
+        # Strip HTML comments and whitespace
+        stripped = re.sub(r'<!--.*?-->', '', existing, flags=re.DOTALL).strip()
+
+        if stripped:
+            # Has real content - prepend new content
+            new_section = f"{header}{content}\n\n{existing}"
+        else:
+            # Only comments/whitespace - replace
+            new_section = f"{header}{content}\n"
+
+        # Replace the section
+        start, end = match.span()
+        return body[:start] + new_section + body[end:]
+
+    def _fill_todo_fields(self, body: str, fields: dict) -> str:
+        """Fill todo template fields using inline key-value format.
+
+        Todo uses `- **Key:** value` format under `### {Task Title}`, not `## Section`.
+        This handles that special case with line-based regex replacement.
+
+        Args:
+            body: Todo template body
+            fields: Dict of field name -> value
+
+        Returns:
+            Body with todo fields filled
+        """
+        if fields.get("description"):
+            # Match "- **Description:**" possibly followed by content on same line
+            body = re.sub(
+                r'(- \*\*Description:\*\*).*',
+                rf'\g<1> {fields["description"]}',
+                body,
+                count=1
+            )
+
+        if fields.get("deadline"):
+            # Match "- **Deadline:**" followed by anything (comment or content)
+            body = re.sub(
+                r'(- \*\*Deadline:\*\*).*',
+                rf'\g<1> {fields["deadline"]}',
+                body,
+                count=1
+            )
+
+        if fields.get("status"):
+            # Match "- **Status:**" followed by anything
+            body = re.sub(
+                r'(- \*\*Status:\*\*).*',
+                rf'\g<1> {fields["status"]}',
+                body,
+                count=1
+            )
+
+        return body
+
     def _fill_template_fields(self, template_type: str, body: str, fields: dict) -> str:
         """Fill in template sections with structured field data.
+
+        Uses section-based parsing that's robust to template comment changes.
 
         Args:
             template_type: Type of template (person, todo, note)
@@ -146,65 +267,21 @@ class KnowledgeManager:
         Returns:
             Body with fields filled in
         """
-        if template_type == "person":
-            # Fill Relation section
-            if fields.get("relation"):
-                body = body.replace(
-                    "## Relation\n<!-- How do you know this person? What's their role in your life? -->",
-                    f"## Relation\n{fields['relation']}"
-                )
-            # Fill Description section
-            if fields.get("description"):
-                body = body.replace(
-                    "## Description\n<!-- Key details: personality, interests, profession, etc. -->",
-                    f"## Description\n{fields['description']}"
-                )
-            # Fill Birthday section
-            if fields.get("birthday"):
-                body = body.replace(
-                    "## Birthday\n<!-- Format: YYYY-MM-DD or \"Unknown\" -->",
-                    f"## Birthday\n{fields['birthday']}"
-                )
-            # Fill Notes section
-            if fields.get("notes"):
-                body = body.replace(
-                    "## Notes\n<!-- Freeform notes, memories, things to remember -->",
-                    f"## Notes\n{fields['notes']}"
-                )
+        if not fields:
+            return body
 
-        elif template_type == "todo":
-            # Fill Description
-            if fields.get("description"):
-                body = body.replace(
-                    "- **Description:**",
-                    f"- **Description:** {fields['description']}"
-                )
-            # Fill Deadline
-            if fields.get("deadline"):
-                body = body.replace(
-                    '- **Deadline:** <!-- "hard: YYYY-MM-DD" or "loose: sometime this week" or "none" -->',
-                    f"- **Deadline:** {fields['deadline']}"
-                )
-            # Fill Status
-            if fields.get("status"):
-                body = body.replace(
-                    "- **Status:** pending <!-- pending | in_progress | blocked | done -->",
-                    f"- **Status:** {fields['status']}"
-                )
+        # Todo uses special inline format, not ## sections
+        if template_type == "todo":
+            return self._fill_todo_fields(body, fields)
 
-        elif template_type == "note":
-            # Fill Summary section
-            if fields.get("summary"):
-                body = body.replace(
-                    "## Summary\n<!-- Brief overview of this knowledge -->",
-                    f"## Summary\n{fields['summary']}"
-                )
-            # Fill Details section
-            if fields.get("details"):
-                body = body.replace(
-                    "## Details\n<!-- Main content -->",
-                    f"## Details\n{fields['details']}"
-                )
+        # For person/note: use section-based replacement
+        for field_name, value in fields.items():
+            if not value:
+                continue
+
+            section_name = self.FIELD_TO_SECTION.get(field_name)
+            if section_name:
+                body = self._replace_section_content(body, section_name, value)
 
         return body
 
@@ -483,16 +560,13 @@ class KnowledgeManager:
         if fields:
             body = self._fill_template_fields(template_type, body, fields)
         elif content:
-            # Legacy fallback - add content to notes/details section
+            # Legacy fallback - add content to notes/details section using helpers
             if template_type == "person":
-                body = body.replace("## Notes\n<!-- Freeform notes, memories, things to remember -->",
-                                  f"## Notes\n{content}")
+                body = self._replace_section_content(body, "Notes", content)
             elif template_type == "note":
-                body = body.replace("## Details\n<!-- Main content -->",
-                                  f"## Details\n{content}")
+                body = self._replace_section_content(body, "Details", content)
             elif template_type == "todo":
-                body = body.replace("- **Description:**",
-                                  f"- **Description:** {content}")
+                body = self._fill_todo_fields(body, {"description": content})
 
         # Write file
         try:
@@ -516,7 +590,8 @@ class KnowledgeManager:
         add_tags: Optional[list[str]] = None,
         remove_tags: Optional[list[str]] = None,
         fields: Optional[dict] = None,
-        template_type: Optional[str] = None
+        template_type: Optional[str] = None,
+        related_files: Optional[list[str]] = None
     ) -> dict:
         """Update an existing knowledge entry.
 
@@ -549,6 +624,12 @@ class KnowledgeManager:
                 current_tags -= set(remove_tags)
             frontmatter["tags"] = list(current_tags)
 
+            # Merge related_files (add new, preserve existing)
+            if related_files:
+                existing = set(frontmatter.get("related_files", []))
+                existing.update(related_files)
+                frontmatter["related_files"] = sorted(existing)
+
             # Update timestamp
             frontmatter["updated"] = datetime.now().strftime("%Y-%m-%d")
 
@@ -559,11 +640,8 @@ class KnowledgeManager:
                 # Append structured fields to appropriate sections
                 body = self._append_to_fields(template_type, body, fields)
             elif append_content:
-                # Legacy: Find the Notes section and append there
-                if "## Notes" in body:
-                    body = body.replace("## Notes\n", f"## Notes\n{append_content}\n\n", 1)
-                else:
-                    body += f"\n\n{append_content}"
+                # Legacy: Append to Notes section using helper
+                body = self._append_to_section(body, "Notes", append_content)
 
             # Write back
             full_content = self._serialize_frontmatter(frontmatter, body)
@@ -580,6 +658,10 @@ class KnowledgeManager:
     def _append_to_fields(self, template_type: str, body: str, fields: dict) -> str:
         """Append new content to existing template fields.
 
+        Uses section-based helpers for robust parsing. For "notes" and "details"
+        fields, appends to existing content. For other fields, replaces only if
+        section currently has no real content.
+
         Args:
             template_type: Type of template
             body: Current body content
@@ -588,42 +670,36 @@ class KnowledgeManager:
         Returns:
             Updated body with appended content
         """
-        if template_type == "person":
-            # Append to Notes section (most common for updates)
-            if fields.get("notes"):
-                # Find ## Notes section and append
-                if "## Notes\n" in body:
-                    parts = body.split("## Notes\n", 1)
-                    body = parts[0] + "## Notes\n" + fields["notes"] + "\n\n" + parts[1]
-            # Update other fields if empty
-            if fields.get("relation") and "<!-- How do you know this person?" in body:
-                body = body.replace(
-                    "## Relation\n<!-- How do you know this person? What's their role in your life? -->",
-                    f"## Relation\n{fields['relation']}"
-                )
-            if fields.get("description") and "<!-- Key details:" in body:
-                body = body.replace(
-                    "## Description\n<!-- Key details: personality, interests, profession, etc. -->",
-                    f"## Description\n{fields['description']}"
-                )
-            if fields.get("birthday") and '<!-- Format: YYYY-MM-DD' in body:
-                body = body.replace(
-                    "## Birthday\n<!-- Format: YYYY-MM-DD or \"Unknown\" -->",
-                    f"## Birthday\n{fields['birthday']}"
-                )
+        if not fields:
+            return body
 
-        elif template_type == "todo":
-            if fields.get("description") and "- **Description:**\n" in body:
-                body = body.replace(
-                    "- **Description:**",
-                    f"- **Description:** {fields['description']}"
-                )
+        # Todo uses special inline format
+        if template_type == "todo":
+            return self._fill_todo_fields(body, fields)
 
-        elif template_type == "note":
-            if fields.get("details"):
-                if "## Details\n" in body:
-                    parts = body.split("## Details\n", 1)
-                    body = parts[0] + "## Details\n" + fields["details"] + "\n\n" + parts[1]
+        # For person/note templates
+        for field_name, value in fields.items():
+            if not value:
+                continue
+
+            section_name = self.FIELD_TO_SECTION.get(field_name)
+            if not section_name:
+                continue
+
+            # Notes and details should append; others should replace-if-empty
+            if field_name in ("notes", "details"):
+                body = self._append_to_section(body, section_name, value)
+            else:
+                # Only replace if section has no real content
+                # Check current section content
+                pattern = rf'## {re.escape(section_name)}\n(.*?)(?=\n## |\Z)'
+                match = re.search(pattern, body, flags=re.DOTALL)
+                if match:
+                    existing = match.group(1)
+                    stripped = re.sub(r'<!--.*?-->', '', existing, flags=re.DOTALL).strip()
+                    if not stripped:
+                        # Empty section - fill it
+                        body = self._replace_section_content(body, section_name, value)
 
         return body
 
@@ -633,7 +709,8 @@ class KnowledgeManager:
         identifier: str,
         content: Optional[str] = None,
         tags: Optional[list[str]] = None,
-        fields: Optional[dict] = None
+        fields: Optional[dict] = None,
+        related_files: Optional[list[str]] = None
     ) -> dict:
         """Find an existing entry or create a new one.
 
@@ -643,6 +720,7 @@ class KnowledgeManager:
             content: Legacy - content to add (used if fields not provided)
             tags: Tags to add
             fields: Structured fields to fill/append
+            related_files: Optional list of related file paths to merge
 
         Returns:
             Dict with status, action taken, and entry info
@@ -665,13 +743,15 @@ class KnowledgeManager:
                     file_path=f"{dir_name}/{slug}.md",
                     fields=fields,
                     template_type=template_type,
-                    add_tags=tags
+                    add_tags=tags,
+                    related_files=related_files
                 )
             else:
                 result = self.update_entry(
                     file_path=f"{dir_name}/{slug}.md",
                     append_content=content,
-                    add_tags=tags
+                    add_tags=tags,
+                    related_files=related_files
                 )
             result["action"] = "updated"
             return result
@@ -685,13 +765,15 @@ class KnowledgeManager:
                         file_path=entry["file_path"],
                         fields=fields,
                         template_type=template_type,
-                        add_tags=tags
+                        add_tags=tags,
+                        related_files=related_files
                     )
                 else:
                     result = self.update_entry(
                         file_path=entry["file_path"],
                         append_content=content,
-                        add_tags=tags
+                        add_tags=tags,
+                        related_files=related_files
                     )
                 result["action"] = "updated"
                 return result
@@ -702,6 +784,7 @@ class KnowledgeManager:
             title=identifier,
             content=content,
             tags=tags,
+            related_files=related_files,
             fields=fields
         )
         result["action"] = "created"

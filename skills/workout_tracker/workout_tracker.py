@@ -38,12 +38,12 @@ class WorkoutTracker:
 
             if any(word in msg for word in ["log", "record", "did", "completed"]):
                 return self._parse_and_log(user_message)
-            elif any(word in msg for word in ["pr", "record", "best", "max", "query"]):
+            elif any(word in msg for word in ["pr", "last", "best", "max", "query"]):
                 return self._parse_and_query(user_message)
             elif any(word in msg for word in ["retrieve", "get", "show workouts"]):
                 return self._retrieve_logged_workouts()
             else:
-                return self._parse_and_log(user_message)
+                return {"status": "error", "message": "No key words detected, no function activated"}
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
@@ -110,7 +110,7 @@ class WorkoutTracker:
         try:
             data = json.loads(self.data_file.read_text())
             data["workouts"].append(workout_entry)
-            self.data_file.write_text(json.dumps(data))
+            self.data_file.write_text(json.dumps(data, indent= 1))
             return {"status": "success", "data": workout_entry}
         except Exception as e:
             return {"status": "error", "message": str(e)}

@@ -53,6 +53,18 @@ export default defineConfig({
       '/chat': {
         target: 'http://localhost:8000',
         changeOrigin: true
+      },
+      '/rollback': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
+      },
+      '/threads': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
+      },
+      '/thread': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
       }
     }
   }

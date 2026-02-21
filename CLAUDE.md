@@ -42,9 +42,10 @@ Zane/
 │   └── architect.md           # Skill generation guidelines
 ├── core/                      # Stateless logic modules
 │   ├── llm/                   # LLM providers (Claude, OpenAI)
-│   ├── memory/                # Conversation persistence
+│   ├── memory/                # Conversation + knowledge persistence
 │   ├── routing/               # Intent detection (CHAT/SKILL/DEV)
-│   └── skills/                # Registry + executor
+│   ├── skills/                # Registry + executor
+│   └── tools/                 # LLM tool definitions (save_knowledge, etc.)
 ├── skills/                    # Skill implementations
 │   ├── core_ops/              # Built-in (time, git)
 │   └── [user_skills]/         # Generated skills
@@ -53,7 +54,12 @@ Zane/
 │   ├── package.json           # Node dependencies
 │   └── vite.config.ts         # Vite + PWA config
 └── memory/
-    └── conversations/         # Chat history (JSON + MD)
+    ├── conversations/         # Chat history (JSON + MD)
+    └── knowledge/             # Long-term knowledge base
+        ├── templates/         # person.md, todo.md, note.md
+        ├── people/            # Person entries
+        ├── todos/             # Task entries
+        └── notes/             # General notes
 ```
 
 ## Core Architecture
@@ -83,6 +89,8 @@ POST /chat → Save user msg → Detect intent → Route (CHAT/SKILL/DEV) → Sa
 | `core/routing/detector.py` | Intent classification via LLM | ~108 |
 | `core/skills/executor.py` | Dynamic Python skill execution | ~142 |
 | `core/memory/conversation.py` | Dual-write JSON+MD persistence | ~150 |
+| `core/memory/knowledge.py` | Knowledge base CRUD (people, todos, notes) | ~750 |
+| `core/tools/definitions.py` | LLM tool schemas (save_knowledge, etc.) | ~124 |
 | `core/architect.py` | Skill self-generation | ~209 |
 | `skills/core_ops/git_tools.py` | Snapshot/rollback/commit safety | ~100 |
 
@@ -119,6 +127,46 @@ class MySkill:
 ### Existing Skills
 - `core_ops` (time_ops): Time/date operations
 - `workout_tracker`: Exercise logging & PR tracking
+
+## Knowledge Base System
+
+Long-term memory stored as markdown files with YAML frontmatter. Three template types:
+
+### Templates (`memory/knowledge/templates/`)
+
+| Template | Directory | Fields |
+|----------|-----------|--------|
+| `person` | `people/` | relation, description, birthday, notes |
+| `todo` | `todos/` | description, deadline, status |
+| `note` | `notes/` | summary, details |
+
+### How It Works
+
+1. **LLM calls `save_knowledge` tool** with template_type, identifier, and fields
+2. **`KnowledgeManager.find_or_create_entry()`** checks if entry exists
+3. **Section-based parsing** fills `## SectionName` headers via regex (not exact string match)
+4. **Frontmatter** tracks `created`, `updated`, `tags`, `related_files`
+
+### Entry Linking
+
+Entries can reference each other via `related_files` in frontmatter:
+```yaml
+related_files:
+  - people/adam.md
+  - notes/project_x.md
+```
+
+When creating relationships (e.g., "Sara is Adam's flatmate"), update both entries.
+
+### Key Implementation Detail
+
+Template filling uses **regex-based section parsing**, not exact comment matching:
+```python
+# Finds ## Birthday header and replaces content until next ## or EOF
+pattern = rf'(## {section_name}\n).*?(?=\n## |\Z)'
+```
+
+This means template comments can change without breaking the filling logic.
 
 ## Code Conventions
 
@@ -255,6 +303,9 @@ Zane is accessible over Tailscale with whois-based authentication.
 Request → Is localhost? → Yes → bypass (dev mode)
                         → No  → tailscale whois → authorized? → proceed / 403
 ```
+
+### Windows Firewall Note
+Pixi installs its own Node.js and Python executables. These must be explicitly allowed through Windows Firewall by executable path (the standard "Allow an app" popup only fires for system-level executables). See `meta_logs/improvements/` for details.
 
 ## Current Status
 

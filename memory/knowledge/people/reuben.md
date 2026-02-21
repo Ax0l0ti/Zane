@@ -1,21 +1,18 @@
 ---
 created: '2026-01-26'
-related_files: []
+related_files: 
+- people\isaac.md
 tags:
-- person
 - family
+- person
 - brother
 template: person
-updated: '2026-01-26'
+updated: '2026-02-02'
 ---
 # Reuben
 
 ## Relation
 youngest brother
-
-
-## Description
-<!-- Key details: personality, interests, profession, etc. -->
 
 
 ## Birthday
@@ -27,5 +24,5 @@ youngest brother
 -
 
 ## Notes
-{'relation': 'youngest brother', 'date_of_birth': '2009-03-04'}
+<!-- Key details, personality, interests, memories, things to remember -->
 

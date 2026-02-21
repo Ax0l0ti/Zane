@@ -100,6 +100,66 @@ class GitTools:
 
         return self.repo.head.commit.hexsha
 
+    def find_last_zane_commit(self) -> Optional[dict]:
+        """Find the most recent [ZANE] commit and its preceding [SNAPSHOT] parent.
+
+        Why: The UI rollback button needs to undo the last Zane-generated change.
+             Zane's workflow is always: [SNAPSHOT] → [ZANE] commit. So to undo,
+             we find the [ZANE] commit and reset to its [SNAPSHOT] parent.
+
+        Returns:
+            Dict with 'zane_sha', 'zane_message', 'snapshot_sha', 'snapshot_message'
+            or None if no [ZANE] commit found in the last 10 commits.
+        """
+        try:
+            commits = list(self.repo.iter_commits(max_count=10))
+            for commit in commits:
+                msg = commit.message.strip()
+                if msg.startswith("[ZANE]"):
+                    # The parent of this commit should be the [SNAPSHOT]
+                    if commit.parents:
+                        parent = commit.parents[0]
+                        return {
+                            "zane_sha": commit.hexsha,
+                            "zane_message": msg,
+                            "snapshot_sha": parent.hexsha,
+                            "snapshot_message": parent.message.strip(),
+                        }
+            return None
+        except Exception:
+            return None
+
+    def rollback_last_zane(self) -> dict:
+        """Rollback the last [ZANE] commit by resetting to its snapshot parent.
+
+        Why: Gives the user a one-click undo for the last skill Zane created/modified.
+             This is the "undo" counterpart to Zane's self-extension workflow.
+
+        Returns:
+            Dict with success status, message, and commit details.
+        """
+        info = self.find_last_zane_commit()
+        if not info:
+            return {
+                "success": False,
+                "message": "No recent [ZANE] commit found to roll back.",
+            }
+
+        try:
+            self.repo.git.reset("--hard", info["snapshot_sha"])
+            self.repo.git.clean("-fd")
+            return {
+                "success": True,
+                "message": f"Rolled back '{info['zane_message']}'. Reset to: {info['snapshot_message']}",
+                "rolled_back_commit": info["zane_sha"][:8],
+                "reset_to": info["snapshot_sha"][:8],
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"Rollback failed: {str(e)}",
+            }
+
     def get_status(self) -> dict:
         """Get current repository status.
 

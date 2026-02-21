@@ -7,21 +7,27 @@ from .intent import Intent
 
 ROUTER_PROMPT = """You are an intent classifier for Zane, an AI assistant. Analyze the user's message and classify it into one of three modes:
 
-1. **CHAT** - General conversation, questions, explanations, advice
+1. **CHAT** - General conversation, questions, explanations, advice, AND knowledge management (updating info about people, notes, todos, remembering things)
 2. **SKILL** - User wants to use a specific tool/skill (check available skills below)
-3. **DEV** - User wants to create, modify, or build code/skills
+3. **DEV** - User explicitly wants to create, modify, or build a new Python skill/tool for Zane. Must involve programming or code generation.
+
+DEV mode is ONLY for building or modifying Python skills. These are NOT DEV:
+- "Update Adam's description" → CHAT (knowledge management)
+- "Add Sara to Adam's related files" → CHAT (knowledge management)
+- "Remember that Pan goes to the gym" → CHAT (knowledge management)
+
+DEV mode examples:
+- "Build me a skill that tracks my reading list" → DEV (create)
+- "Dev: modify the workout tracker to add sets" → DEV (modify)
 
 For DEV mode, also determine:
 - **action**: "create" if building something new, "modify" if changing an existing skill
 - **target_skill**: the name/id of the skill to modify (null if creating new)
 
-Modify keywords: modify, update, change, edit, fix, tweak, adjust, improve
-Create keywords: build, create, make, add, new, write
-
 Available skills:
 {skills_list}
 
-Respond with ONLY valid JSON in this exact format (no markdown, no explanation):
+Respond with ONLY valid JSON (no markdown, no explanation):
 {{"mode": "CHAT|SKILL|DEV", "confidence": 0.0-1.0, "skill_name": "name or null", "action": "create|modify|null", "target_skill": "skill name or null", "reasoning": "brief explanation"}}
 
 User message: {message}"""

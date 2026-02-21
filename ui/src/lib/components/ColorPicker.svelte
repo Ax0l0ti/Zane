@@ -6,8 +6,8 @@
     { name: 'blue', label: 'Blue' },
     { name: 'cyan', label: 'Cyan' },
     { name: 'green', label: 'Green' },
-    { name: 'purple', label: 'Purple' },
-    { name: 'orange', label: 'Orange' }
+    { name: 'white', label: 'White' },
+    { name: 'pink', label: 'Pink' }
   ];
 
   function selectColor(colorName: AccentColor) {

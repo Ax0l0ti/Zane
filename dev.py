@@ -36,6 +36,19 @@ def main():
         )
         processes.append(frontend)
 
+        # Show Tailscale access info
+        try:
+            ts_result = subprocess.run(
+                ["tailscale", "ip", "-4"], capture_output=True, text=True, timeout=2
+            )
+            ts_ip = ts_result.stdout.strip()
+            if ts_ip:
+                print(f"[dev] Tailscale IP: {ts_ip}")
+                print(f"[dev]   Backend:  http://{ts_ip}:8000")
+                print(f"[dev]   Frontend: http://{ts_ip}:5173")
+        except Exception:
+            print("[dev] Tailscale not detected — localhost only")
+
         print("\n[dev] Both servers running. Press Ctrl+C to stop.\n")
 
         # Wait for either process to exit
